@@ -1,9 +1,8 @@
 # =================================================================================
-# Script Name:  Install-And-Update-Apps.ps1 (Version 1.2 - Added Source Specificity)
-# Description:  Checks, installs, and updates applications, specifying the 'winget' source
-#               to avoid conflicts and errors.
-# Author:       AI Assistant
-# Version:      1.2
+# Script Name:  auto-setup-windows-dev.ps1 (Version 1.3 - Updated App List)
+# Description:  Checks, installs, and updates a new list of applications.
+# Author:       MohammadReza Jafari
+# Version:      1.3
 # =================================================================================
 
 # --- بخش 1: درخواست دسترسی ادمین ---
@@ -14,14 +13,16 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # --- بخش 2: تعریف لیست برنامه‌ها ---
+# نکته: برای برنامه‌های لینوکسی، جایگزین‌های محبوب ویندوزی انتخاب شده است.
 $programs = @{
-    "Hiddify Next"      = "Hiddify.HiddifyNext"
-    "Google Chrome"     = "Google.Chrome"
-    "AnyDesk"           = "AnyDesk.AnyDesk"
-    "RustDesk"          = "RustDesk.RustDesk"
-    "Telegram Desktop"  = "Telegram.TelegramDesktop"
-    "Visual Studio Code"= "Microsoft.VisualStudioCode"
-    "Git"               = "Git.Git"
+    "Google Chrome"    = "Google.Chrome"
+    "Telegram Desktop" = "Telegram.TelegramDesktop"
+    "VS Code"          = "Microsoft.VisualStudioCode"
+    "Git"              = "Git.Git"
+    "Docker Desktop"   = "Docker.DockerDesktop"
+    "RustDesk"         = "RustDesk.RustDesk"
+    "ShareX"           = "ShareX.ShareX"          # جایگزین قدرتمند برای Simple Screen Recorder
+    "Stretchly"        = "hovancik.Stretchly"     # جایگزین برای Safe Eyes (یادآور استراحت)
 }
 
 # --- بخش 3: آماده‌سازی برای گزارش‌دهی ---
@@ -32,7 +33,6 @@ $report = @{
 }
 
 # --- بخش 4: بررسی و به‌روزرسانی winget ---
-# (این بخش بدون تغییر باقی می‌ماند)
 Write-Host "Checking for winget..." -ForegroundColor Yellow
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Error "winget is not installed or not in the system's PATH. Please install 'App Installer' from the Microsoft Store."
@@ -44,7 +44,7 @@ Write-Host "winget found." -ForegroundColor Green
 Write-Host "Updating winget sources..." -ForegroundColor Yellow
 winget source update | Out-Null
 
-# --- بخش 5: حلقه اصلی برای بررسی، نصب و آپدیت (با تعیین منبع) ---
+# --- بخش 5: حلقه اصلی برای بررسی، نصب و آپدیت ---
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
 Write-Host "Starting Application Health Check..." -ForegroundColor Cyan
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
@@ -55,13 +55,10 @@ foreach ($program in $programs.GetEnumerator()) {
     
     Write-Host "Processing: $appName ($appId)" -ForegroundColor Yellow
 
-    # بررسی نصب بودن برنامه از منبع winget
     winget list --id $appId --source winget -e --accept-source-agreements | Out-Null
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  -> Status: Not installed. Attempting to install from 'winget' source..." -ForegroundColor Magenta
-        
-        # *** تغییر کلیدی: اضافه کردن --source winget ***
         winget install --id $appId --source winget -e --silent --accept-package-agreements --accept-source-agreements
         
         if ($LASTEXITCODE -eq 0) {
@@ -73,8 +70,6 @@ foreach ($program in $programs.GetEnumerator()) {
     }
     else {
         Write-Host "  -> Status: Installed. Checking for updates from 'winget' source..." -ForegroundColor Cyan
-        
-        # *** تغییر کلیدی: اضافه کردن --source winget ***
         $upgradeOutput = winget upgrade --id $appId --source winget -e --silent --accept-package-agreements --accept-source-agreements
         
         if ($LASTEXITCODE -eq 0 -and ($upgradeOutput -notmatch "No applicable update found" -and $upgradeOutput -notmatch "No installed package found matching input criteria")) {
@@ -90,7 +85,6 @@ foreach ($program in $programs.GetEnumerator()) {
 
 
 # --- بخش 6: نمایش گزارش نهایی ---
-# (این بخش بدون تغییر باقی می‌ماند)
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "                  FINAL REPORT" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
