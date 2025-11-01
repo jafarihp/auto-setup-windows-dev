@@ -1,8 +1,8 @@
 # =================================================================================
-# Script Name:  auto-setup-windows-dev.ps1 (Version 1.3 - Updated App List)
+# Script Name:  auto-setup-windows-dev.ps1 (Version 1.4 - Updated App List)
 # Description:  Checks, installs, and updates a new list of applications.
 # Author:       MohammadReza Jafari
-# Version:      1.3
+# Version:      1.4
 # =================================================================================
 
 # --- بخش 1: درخواست دسترسی ادمین ---
@@ -15,14 +15,19 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # --- بخش 2: تعریف لیست برنامه‌ها ---
 # نکته: برای برنامه‌های لینوکسی، جایگزین‌های محبوب ویندوزی انتخاب شده است.
 $programs = @{
-    "Google Chrome"    = "Google.Chrome"
-    "Telegram Desktop" = "Telegram.TelegramDesktop"
-    "VS Code"          = "Microsoft.VisualStudioCode"
-    "Git"              = "Git.Git"
-    "Docker Desktop"   = "Docker.DockerDesktop"
-    "RustDesk"         = "RustDesk.RustDesk"
-    "ShareX"           = "ShareX.ShareX"          # جایگزین قدرتمند برای Simple Screen Recorder
-    "Stretchly"        = "hovancik.Stretchly"     # جایگزین برای Safe Eyes (یادآور استراحت)
+    "Google Chrome"              = "Google.Chrome"
+    "Internet Download Manager"  = "Tonec.InternetDownloadManager"
+    "Hiddify"                    = "Hiddify.Hiddify"
+    "Telegram Desktop"           = "Telegram.TelegramDesktop"
+    "VS Code"                    = "Microsoft.VisualStudioCode"
+    "Git"                        = "Git.Git"
+    "Docker Desktop"             = "Docker.DockerDesktop"
+    "RustDesk"                   = "RustDesk.RustDesk"
+    "AnyDesk"                    = "AnyDesk.AnyDesk"
+    "Virtual CloneDrive"         = "VideoLAN.VLC"
+    "VLC media player"         = "ElaborateBytes.VirtualCloneDrive"
+    "ShareX"                     = "ShareX.ShareX"          # جایگزین قدرتمند برای Simple Screen Recorder
+    "Stretchly"                  = "Stretchly.Stretchly"     # جایگزین برای Safe Eyes (یادآور استراحت)
 }
 
 # --- بخش 3: آماده‌سازی برای گزارش‌دهی ---
