@@ -1,46 +1,21 @@
-# =================================================================================
-# Script Name:  auto-setup-windows-dev.ps1 (Version 2.0)
-# Description:  Performs a hardware check, installs custom fonts, and automates
-#               dev environment application setup. Automatically requests Admin rights.
+﻿# =================================================================================
+# Script Name:  auto-setup-windows-dev.ps1 (Version 2.1)
+# Description:  Performs a hardware check, installs fonts, and sets up apps.
+#               MUST BE RUN VIA THE ADMIN SHORTCUT.
 # Author:       MohammadReza Jafari
-# Version:      2.0
+# Version:      2.1
 # =================================================================================
 
-# --- Section 1: Smart Self-Elevation to Administrator ---
-# This script will attempt to re-launch itself with Administrator privileges if it's not already running as Admin.
+# --- Section 1: Verify Administrator Privileges ---
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    
-    # --- Instructions for the user ---
-    Write-Host "------------------------------------------------------------------" -ForegroundColor Yellow
-    Write-Host "Administrator privileges are required." -ForegroundColor Yellow
-    Write-Host "This script will now attempt to re-launch itself with admin rights." -ForegroundColor Yellow
-    Write-Host "Please click 'Yes' on the UAC prompt that appears." -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "IF THIS FAILS (e.g., the new window flashes and closes):" -ForegroundColor Red
-    Write-Host "It means your system (Antivirus or other policy) is blocking it." -ForegroundColor Red
-    Write-Host "In that case, you MUST run the script manually as admin:" -ForegroundColor Red
-    Write-Host "1. Close this window." -ForegroundColor Red
-    Write-Host "2. Right-click the .ps1 file and select 'Run as administrator'." -ForegroundColor Red
-    Write-Host "------------------------------------------------------------------"
-    Read-Host "Press Enter to continue and request Administrator access..."
-
-    # --- Attempting to self-elevate using a more robust method ---
-    try {
-        $arguments = "-ExecutionPolicy Bypass -File `"$PSCommandPath`""
-        Start-Process powershell.exe -Verb RunAs -ArgumentList $arguments
-    }
-    catch {
-        Write-Error "Failed to re-launch as Administrator. $_"
-        Read-Host "Press Enter to exit."
-    }
-    
-    # Exit the current, non-admin script
+    Write-Error "FATAL ERROR: This script was not run with Administrator privileges."
+    Write-Warning "Please do not run this file directly. Use the special 'Setup Dev Env' Shortcut you created."
+    Read-Host "`nPress Enter to exit..."
     exit
 }
 
 # --- If we get here, we are running as Admin ---
 Write-Host "Successfully running with Administrator privileges." -ForegroundColor Green
-
 
 # --- Section 2: System Hardware & OS Information ---
 Write-Host "======================================================" -ForegroundColor Cyan
@@ -48,7 +23,6 @@ Write-Host "     📊 SYSTEM HARDWARE and OS REPORT 📊" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "Gathering system information, please wait..." -ForegroundColor Yellow
 
-# (The rest of the script is unchanged)
 # --- OS Info ---
 try {
     $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
@@ -121,7 +95,6 @@ try {
         Write-Host "     Capacity: $diskSizeGB GB" -ForegroundColor Gray
     }
     
-    # Logical Drive Usage
     $logicalDisks = Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 }
     Write-Host "   Usage:" -ForegroundColor White
     foreach ($ldisk in $logicalDisks) {
@@ -142,7 +115,6 @@ catch { Write-Warning "Could not retrieve Storage information." }
 try {
     Write-Host "`n🔌 --- PORTS and CONNECTIVITY ---" -ForegroundColor Green
     
-    # Network Adapters
     $netAdapters = Get-CimInstance -ClassName Win32_NetworkAdapter -Filter "PhysicalAdapter = True"
     Write-Host "   Network Adapters:" -ForegroundColor White
     foreach ($adapter in $netAdapters) {
@@ -150,7 +122,6 @@ try {
         Write-Host "     - $($adapter.Name) | Speed: $speed" -ForegroundColor Gray
     }
 
-    # USB Controllers
     $usbControllers = Get-CimInstance -ClassName Win32_USBController
     Write-Host "   USB Controllers:" -ForegroundColor White
     foreach ($controller in $usbControllers) {
@@ -188,9 +159,6 @@ Write-Host "`n`n"
 Read-Host "System report complete. Press Enter to proceed with Font Installation..."
 
 # --- Section 4: Font Installation ---
-# ... (and the rest of the script)
-# ...
-
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "             🖋️ FONT INSTALLATION 🖋️" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
@@ -246,8 +214,6 @@ $programs = @{
     "VLC media player"          = "VideoLAN.VLC"
     "VS Code"                   = "Microsoft.VisualStudioCode"
 }
-
-# (The rest of the script continues as before)
 
 # --- Section 6: Prepare for Reporting ---
 $report = @{
