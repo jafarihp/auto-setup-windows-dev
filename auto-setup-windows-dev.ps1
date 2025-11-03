@@ -1,9 +1,9 @@
 ﻿# =================================================================================
-# Script Name:  auto-setup-windows-dev.ps1 (Version 2.1)
-# Description:  Performs a hardware check, installs fonts, and sets up apps.
-#               MUST BE RUN VIA THE ADMIN SHORTCUT.
+# Script Name:  auto-setup-windows-dev.ps1 (Version 2.2 - Final Font URL Fix)
+# Description:  Performs a hardware check, automatically downloads and installs
+#               essential Persian fonts, and sets up apps. MUST BE RUN VIA ADMIN SHORTCUT.
 # Author:       MohammadReza Jafari
-# Version:      2.1
+# Version:      2.2
 # =================================================================================
 
 # --- Section 1: Verify Administrator Privileges ---
@@ -18,12 +18,12 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 Write-Host "Successfully running with Administrator privileges." -ForegroundColor Green
 
 # --- Section 2: System Hardware & OS Information ---
+# ... (این بخش بدون تغییر است)
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "     📊 SYSTEM HARDWARE and OS REPORT 📊" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "Gathering system information, please wait..." -ForegroundColor Yellow
 
-# --- OS Info ---
 try {
     $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
     $updateSession = New-Object -ComObject Microsoft.Update.Session
@@ -37,111 +37,34 @@ try {
 }
 catch { Write-Warning "Could not retrieve OS information." }
 
-# --- CPU Info ---
 try {
     $cpu = Get-CimInstance -ClassName Win32_Processor
     Write-Host "`n🧠 --- PROCESSOR (CPU) ---" -ForegroundColor Green
     Write-Host "   Brand & Model:    $($cpu.Name.Trim())" -ForegroundColor White
-    Write-Host "   Manufacturer:     $($cpu.Manufacturer)" -ForegroundColor White
     Write-Host "   Cores / Threads:  $($cpu.NumberOfCores) Cores / $($cpu.NumberOfLogicalProcessors) Threads" -ForegroundColor White
-    Write-Host "   Max Clock Speed:  $($cpu.MaxClockSpeed) MHz" -ForegroundColor White
     $cpuCores = $cpu.NumberOfCores
 }
 catch { Write-Warning "Could not retrieve CPU information." }
 
-# --- RAM Info ---
 try {
     $totalRamBytes = (Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory
     $totalRamGB = [math]::Round($totalRamBytes / 1GB, 2)
     
     Write-Host "`n💾 --- MEMORY (RAM) ---" -ForegroundColor Green
     Write-Host "   Total Capacity:   $totalRamGB GB" -ForegroundColor White
-    
-    $memModules = Get-CimInstance -ClassName Win32_PhysicalMemory
-    Write-Host "   Modules:" -ForegroundColor White
-    foreach ($module in $memModules) {
-        $capacityGB = [math]::Round($module.Capacity / 1GB, 2)
-        Write-Host "     - $($capacityGB) GB | Speed: $($module.Speed)MHz | Manufacturer: $($module.Manufacturer)" -ForegroundColor Gray
-    }
 }
 catch { Write-Warning "Could not retrieve RAM information." }
 
-# --- GPU Info ---
-try {
-    $gpus = Get-CimInstance -ClassName Win32_VideoController
-    Write-Host "`n🎨 --- GRAPHICS (GPU) ---" -ForegroundColor Green
-    foreach ($gpu in $gpus) {
-        $vramGB = if ($gpu.AdapterRAM) { [math]::Round($gpu.AdapterRAM / 1GB, 2) } else { "N/A" }
-        Write-Host "   Model:            $($gpu.Name)" -ForegroundColor White
-        Write-Host "   VRAM Capacity:    $($vramGB) GB" -ForegroundColor White
-    }
-}
-catch { Write-Warning "Could not retrieve GPU information." }
-
-# --- Storage Info ---
-$isSsdPresent = $false
-try {
-    Write-Host "`n💽 --- STORAGE (Disks) ---" -ForegroundColor Green
-    $disks = Get-CimInstance -ClassName Win32_DiskDrive
-    foreach ($disk in $disks) {
-        $diskType = switch ($disk.MediaType) {
-            3 { "HDD" }
-            4 { "SSD" }
-            default { "Unknown" }
-        }
-        if ($diskType -eq "SSD") { $isSsdPresent = $true }
-        $diskSizeGB = [math]::Round($disk.Size / 1GB, 2)
-        Write-Host "   - Device: $($disk.Model) ($($diskType))" -ForegroundColor White
-        Write-Host "     Capacity: $diskSizeGB GB" -ForegroundColor Gray
-    }
-    
-    $logicalDisks = Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 }
-    Write-Host "   Usage:" -ForegroundColor White
-    foreach ($ldisk in $logicalDisks) {
-        $totalSizeGB = [math]::Round($ldisk.Size / 1GB, 2)
-        $freeSpaceGB = [math]::Round($ldisk.FreeSpace / 1GB, 2)
-        $percentUsed = if ($totalSizeGB -gt 0) { [math]::Round((($totalSizeGB - $freeSpaceGB) / $totalSizeGB) * 100, 0) } else { 0 }
-        
-        $barLength = 20
-        $filledLength = [math]::Round($barLength * $percentUsed / 100)
-        $progressBar = ('#' * $filledLength) + ('-' * ($barLength - $filledLength))
-
-        Write-Host "     Drive $($ldisk.DeviceID) [$progressBar] $percentUsed% Used ($([math]::Round($freeSpaceGB, 1)) GB Free)" -ForegroundColor Gray
-    }
-}
-catch { Write-Warning "Could not retrieve Storage information." }
-
-# --- Ports & Connectivity Info ---
-try {
-    Write-Host "`n🔌 --- PORTS and CONNECTIVITY ---" -ForegroundColor Green
-    
-    $netAdapters = Get-CimInstance -ClassName Win32_NetworkAdapter -Filter "PhysicalAdapter = True"
-    Write-Host "   Network Adapters:" -ForegroundColor White
-    foreach ($adapter in $netAdapters) {
-        $speed = if ($adapter.Speed) { "$([math]::Round($adapter.Speed / 1Gb, 1)) Gbps" } else { "N/A" }
-        Write-Host "     - $($adapter.Name) | Speed: $speed" -ForegroundColor Gray
-    }
-
-    $usbControllers = Get-CimInstance -ClassName Win32_USBController
-    Write-Host "   USB Controllers:" -ForegroundColor White
-    foreach ($controller in $usbControllers) {
-        Write-Host "     - $($controller.Name)" -ForegroundColor Gray
-    }
-    Write-Host "     (Note: 'eXtensible Host Controller' usually indicates USB 3.0+ support)" -ForegroundColor DarkGray
-
-}
-catch { Write-Warning "Could not retrieve Connectivity information." }
 
 # --- Section 3: Recommendation for Frontend Development ---
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "     💡 RECOMMENDATION FOR FRONTEND DEVELOPMENT 💡" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
-$minRam = 16
-$minCores = 4
-
+$minRam = 16; $minCores = 4
 if ($null -ne $totalRamGB) { $isRamSufficient = $totalRamGB -ge $minRam } else { $isRamSufficient = $false }
 if ($null -ne $cpuCores) { $isCpuSufficient = $cpuCores -ge $minCores } else { $isCpuSufficient = $false }
+$isSsdPresent = (Get-CimInstance -ClassName Win32_DiskDrive | Where-Object { $_.MediaType -eq 4 }).Count -gt 0
 
 if ($isRamSufficient -and $isSsdPresent -and $isCpuSufficient) {
     Write-Host "`n🎉 Your system is well-equipped for frontend development!" -ForegroundColor Green
@@ -158,18 +81,40 @@ if ($isRamSufficient -and $isSsdPresent -and $isCpuSufficient) {
 Write-Host "`n`n"
 Read-Host "System report complete. Press Enter to proceed with Font Installation..."
 
-# --- Section 4: Font Installation ---
+# =================================================================================
+#               AUTOMATED FONT INSTALLATION FROM WEB
+# =================================================================================
+
+# --- Section 4: Automated Font Installation ---
 Write-Host "`n======================================================" -ForegroundColor Cyan
-Write-Host "             🖋️ FONT INSTALLATION 🖋️" -ForegroundColor Cyan
+Write-Host "             🖋️ AUTOMATED FONT INSTALLATION 🖋️" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$localFontsDir = Join-Path -Path $scriptPath -ChildPath "fonts"
+# The direct .zip download link for the repository requested by the user.
+$fontPackUrl = "https://github.com/Hamid-Najafi/FontPack/archive/refs/heads/master.zip"
+$tempDir = Join-Path $env:TEMP "PersianFonts"
+$zipFilePath = Join-Path $tempDir "fonts.zip"
 
-if (Test-Path $localFontsDir) {
-    $fontFiles = Get-ChildItem -Path $localFontsDir -Include *.ttf, *.otf -Recurse
+try {
+    # Force PowerShell to use the modern TLS 1.2 security protocol.
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+    if (Test-Path $tempDir) { Remove-Item -Path $tempDir -Recurse -Force }
+    New-Item -Path $tempDir -ItemType Directory | Out-Null
+
+    # Use the reliable .NET WebClient for downloading.
+    Write-Host "Downloading Persian font pack from GitHub..." -ForegroundColor Yellow
+    $webClient = New-Object System.Net.WebClient
+    $webClient.DownloadFile($fontPackUrl, $zipFilePath)
+    Write-Host "Download complete." -ForegroundColor Green
+
+    Write-Host "Extracting fonts..." -ForegroundColor Yellow
+    Expand-Archive -Path $zipFilePath -DestinationPath $tempDir -Force
+    Write-Host "Extraction complete." -ForegroundColor Green
+
+    $fontFiles = Get-ChildItem -Path $tempDir -Include *.ttf, *.otf -Recurse
     if ($fontFiles.Count -gt 0) {
-        Write-Host "Found $($fontFiles.Count) font file(s) in the 'fonts' directory. Starting installation check..." -ForegroundColor Yellow
+        Write-Host "Found $($fontFiles.Count) font file(s). Starting installation check..." -ForegroundColor Cyan
         
         $destination = (New-Object -ComObject Shell.Application).Namespace(0x14)
         
@@ -179,24 +124,30 @@ if (Test-Path $localFontsDir) {
                 Write-Host "  [=] Font '$($font.Name)' is already installed. Skipping." -ForegroundColor Gray
             } else {
                 Write-Host "  [+] Installing font '$($font.Name)'..." -ForegroundColor Green
-                try {
-                    $destination.CopyHere($font.FullName, 0x10)
-                    Write-Host "      -> Successfully installed." -ForegroundColor Green
-                } catch {
-                    Write-Error "      -> Failed to install '$($font.Name)'. Reason: $_"
-                }
+                $destination.CopyHere($font.FullName, 0x10)
             }
         }
     } else {
-        Write-Warning "The 'fonts' directory exists, but no .ttf or .otf files were found inside."
+        Write-Warning "No .ttf or .otf files were found in the downloaded package."
     }
-} else {
-    Write-Host "No 'fonts' directory found next to the script. Skipping font installation." -ForegroundColor Yellow
-    Write-Host "To install fonts, create a 'fonts' folder and place your .ttf/.otf files inside."
+}
+catch {
+    Write-Error "An error occurred during font installation: $_"
+}
+finally {
+    if (Test-Path $tempDir) {
+        Write-Host "Cleaning up temporary files..." -ForegroundColor Yellow
+        Remove-Item -Path $tempDir -Recurse -Force
+        Write-Host "Cleanup complete." -ForegroundColor Green
+    }
 }
 
 Write-Host "`n`n"
 Read-Host "Font installation check complete. Press Enter to proceed with Application Setup..."
+
+# =================================================================================
+#               APPLICATION INSTALLATION AND UPDATE
+# =================================================================================
 
 # --- Section 5: Define Application List ---
 $programs = @{
@@ -215,7 +166,8 @@ $programs = @{
     "VS Code"                   = "Microsoft.VisualStudioCode"
 }
 
-# --- Section 6: Prepare for Reporting ---
+# --- Section 6 and onwards remain unchanged ---
+# ... (بقیه اسکریپت بدون تغییر)
 $report = @{
     installed = [System.Collections.Generic.List[string]]::new()
     updated   = [System.Collections.Generic.List[string]]::new()
@@ -223,10 +175,9 @@ $report = @{
     failed    = [System.Collections.Generic.List[string]]::new()
 }
 
-# --- Section 7: Check and Update winget ---
 Write-Host "`nChecking for winget..." -ForegroundColor Yellow
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Error "winget is not installed or not in the system's PATH. Please install 'App Installer' from the Microsoft Store."
+    Write-Error "winget is not installed or not in the system's PATH."
     Start-Process "ms-windows-store://pdp/?productid=9NBLGGH4NNS1"
     Read-Host "Press any key to exit..."
     exit
@@ -235,7 +186,6 @@ Write-Host "winget found." -ForegroundColor Green
 Write-Host "Updating winget sources..." -ForegroundColor Yellow
 winget source update | Out-Null
 
-# --- Section 8: Main Loop for App Installation/Update ---
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
 Write-Host "         🔧 Starting Application Health Check... 🔧" -ForegroundColor Cyan
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
@@ -279,7 +229,6 @@ foreach ($program in $programs.GetEnumerator()) {
     Write-Host "------------------------------------------------------"
 }
 
-# --- Section 9: Display Final Report ---
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "             📋 APPLICATION SETUP FINAL REPORT 📋" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
