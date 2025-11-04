@@ -1,7 +1,7 @@
 ﻿# =================================================================================
-# Script Name:  auto-setup-windows-dev.ps1 (Version 2.2 - Final Font URL Fix)
-# Description:  Performs a hardware check, automatically downloads and installs
-#               essential Persian fonts, and sets up apps. MUST BE RUN VIA ADMIN SHORTCUT.
+# Script Name:  auto-setup-windows-dev.ps1 (Version 2.2 - Font Install Last)
+# Description:  Performs a hardware check, sets up apps, and finally installs
+#               essential Persian fonts. MUST BE RUN VIA ADMIN SHORTCUT.
 # Author:       MohammadReza Jafari
 # Version:      2.2
 # =================================================================================
@@ -18,7 +18,6 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 Write-Host "Successfully running with Administrator privileges." -ForegroundColor Green
 
 # --- Section 2: System Hardware & OS Information ---
-# ... (این بخش بدون تغییر است)
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "     📊 SYSTEM HARDWARE and OS REPORT 📊" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
@@ -79,80 +78,17 @@ if ($isRamSufficient -and $isSsdPresent -and $isCpuSufficient) {
 }
 
 Write-Host "`n`n"
-Read-Host "System report complete. Press Enter to proceed with Font Installation..."
-
-# =================================================================================
-#               AUTOMATED FONT INSTALLATION FROM WEB
-# =================================================================================
-
-# --- Section 4: Automated Font Installation ---
-Write-Host "`n======================================================" -ForegroundColor Cyan
-Write-Host "             🖋️ AUTOMATED FONT INSTALLATION 🖋️" -ForegroundColor Cyan
-Write-Host "======================================================" -ForegroundColor Cyan
-
-# The direct .zip download link for the repository requested by the user.
-$fontPackUrl = "https://github.com/Hamid-Najafi/FontPack/archive/refs/heads/master.zip"
-$tempDir = Join-Path $env:TEMP "PersianFonts"
-$zipFilePath = Join-Path $tempDir "fonts.zip"
-
-try {
-    # Force PowerShell to use the modern TLS 1.2 security protocol.
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-
-    if (Test-Path $tempDir) { Remove-Item -Path $tempDir -Recurse -Force }
-    New-Item -Path $tempDir -ItemType Directory | Out-Null
-
-    # Use the reliable .NET WebClient for downloading.
-    Write-Host "Downloading Persian font pack from GitHub..." -ForegroundColor Yellow
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFile($fontPackUrl, $zipFilePath)
-    Write-Host "Download complete." -ForegroundColor Green
-
-    Write-Host "Extracting fonts..." -ForegroundColor Yellow
-    Expand-Archive -Path $zipFilePath -DestinationPath $tempDir -Force
-    Write-Host "Extraction complete." -ForegroundColor Green
-
-    $fontFiles = Get-ChildItem -Path $tempDir -Include *.ttf, *.otf -Recurse
-    if ($fontFiles.Count -gt 0) {
-        Write-Host "Found $($fontFiles.Count) font file(s). Starting installation check..." -ForegroundColor Cyan
-        
-        $destination = (New-Object -ComObject Shell.Application).Namespace(0x14)
-        
-        foreach ($font in $fontFiles) {
-            $installedFontPath = Join-Path -Path $env:windir -ChildPath "Fonts\$($font.Name)"
-            if (Test-Path $installedFontPath) {
-                Write-Host "  [=] Font '$($font.Name)' is already installed. Skipping." -ForegroundColor Gray
-            } else {
-                Write-Host "  [+] Installing font '$($font.Name)'..." -ForegroundColor Green
-                $destination.CopyHere($font.FullName, 0x10)
-            }
-        }
-    } else {
-        Write-Warning "No .ttf or .otf files were found in the downloaded package."
-    }
-}
-catch {
-    Write-Error "An error occurred during font installation: $_"
-}
-finally {
-    if (Test-Path $tempDir) {
-        Write-Host "Cleaning up temporary files..." -ForegroundColor Yellow
-        Remove-Item -Path $tempDir -Recurse -Force
-        Write-Host "Cleanup complete." -ForegroundColor Green
-    }
-}
-
-Write-Host "`n`n"
-Read-Host "Font installation check complete. Press Enter to proceed with Application Setup..."
+Read-Host "System report complete. Press Enter to proceed with Application Setup..."
 
 # =================================================================================
 #               APPLICATION INSTALLATION AND UPDATE
 # =================================================================================
 
-# --- Section 5: Define Application List ---
+# --- Section 4: Define Application List ---
 $programs = @{
     "AnyDesk"                   = "AnyDesk.AnyDesk"
     "Docker Desktop"            = "Docker.DockerDesktop"
+    "Everything"                = "voidtools.Everything"
     "Git"                       = "Git.Git"
     "Google Chrome"             = "Google.Chrome"
     "Hiddify"                   = "Hiddify.Hiddify"
@@ -166,8 +102,7 @@ $programs = @{
     "VS Code"                   = "Microsoft.VisualStudioCode"
 }
 
-# --- Section 6 and onwards remain unchanged ---
-# ... (بقیه اسکریپت بدون تغییر)
+# --- Section 5: Prepare for Reporting ---
 $report = @{
     installed = [System.Collections.Generic.List[string]]::new()
     updated   = [System.Collections.Generic.List[string]]::new()
@@ -175,6 +110,7 @@ $report = @{
     failed    = [System.Collections.Generic.List[string]]::new()
 }
 
+# --- Section 6: Check and Update winget ---
 Write-Host "`nChecking for winget..." -ForegroundColor Yellow
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Error "winget is not installed or not in the system's PATH."
@@ -186,6 +122,7 @@ Write-Host "winget found." -ForegroundColor Green
 Write-Host "Updating winget sources..." -ForegroundColor Yellow
 winget source update | Out-Null
 
+# --- Section 7: Main Loop for App Installation/Update ---
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
 Write-Host "         🔧 Starting Application Health Check... 🔧" -ForegroundColor Cyan
 Write-Host "`n======================================================`n" -ForegroundColor Cyan
@@ -229,6 +166,7 @@ foreach ($program in $programs.GetEnumerator()) {
     Write-Host "------------------------------------------------------"
 }
 
+# --- Section 8: Display App Setup Final Report ---
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "             📋 APPLICATION SETUP FINAL REPORT 📋" -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
@@ -237,6 +175,81 @@ if ($report.updated.Count -gt 0) { Write-Host "`n[*] Updated Applications:" -For
 if ($report.no_action.Count -gt 0) { Write-Host "`n[=] Applications Already Up-to-Date:" -ForegroundColor Gray; $report.no_action | ForEach-Object { Write-Host "  - $_" } }
 if ($report.failed.Count -gt 0) { Write-Host "`n[!] Failed Operations:" -ForegroundColor Red; $report.failed | ForEach-Object { Write-Host "  - $_" } }
 if ($report.installed.Count -eq 0 -and $report.updated.Count -eq 0 -and $report.failed.Count -eq 0) { Write-Host "`nAll specified applications were already installed and up-to-date." -ForegroundColor Green }
+
+Write-Host "`n`n"
+Read-Host "Application setup complete. Press Enter to proceed with Font Installation..."
+
+# =================================================================================
+#               AUTOMATED FONT INSTALLATION FROM WEB
+# =================================================================================
+
+# --- Section 9: Automated Font Installation ---
+Write-Host "`n======================================================" -ForegroundColor Cyan
+Write-Host "             🖋️ AUTOMATED FONT INSTALLATION 🖋️" -ForegroundColor Cyan
+Write-Host "======================================================" -ForegroundColor Cyan
+
+$fontPackUrl = "https://github.com/Hamid-Najafi/FontPack/archive/refs/heads/master.zip"
+$tempDir = Join-Path $env:TEMP "PersianFonts"
+$zipFilePath = Join-Path $tempDir "fonts.zip"
+
+try {
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+    if (Test-Path $tempDir) { Remove-Item -Path $tempDir -Recurse -Force }
+    New-Item -Path $tempDir -ItemType Directory | Out-Null
+
+    Write-Host "Downloading Persian font pack from GitHub..." -ForegroundColor Yellow
+    $webClient = New-Object System.Net.WebClient
+    $webClient.DownloadFile($fontPackUrl, $zipFilePath)
+    Write-Host "Download complete." -ForegroundColor Green
+
+    Write-Host "Extracting fonts..." -ForegroundColor Yellow
+    Expand-Archive -Path $zipFilePath -DestinationPath $tempDir -Force
+    Write-Host "Extraction complete." -ForegroundColor Green
+
+    $allFontFiles = Get-ChildItem -Path $tempDir -Include *.ttf, *.otf -Recurse
+    if ($allFontFiles.Count -eq 0) {
+        throw "No .ttf or .otf files were found in the downloaded package."
+    }
+    
+    Write-Host "Checking for new fonts to install..." -ForegroundColor Yellow
+    $fontsToInstall = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+    
+    foreach ($font in $allFontFiles) {
+        $installedFontPath = Join-Path -Path $env:windir -ChildPath "Fonts\$($font.Name)"
+        if (-not (Test-Path $installedFontPath)) {
+            $fontsToInstall.Add($font)
+        }
+    }
+
+    if ($fontsToInstall.Count -gt 0) {
+        Write-Host "Found $($fontsToInstall.Count) new font(s) to install." -ForegroundColor Cyan
+        $destination = (New-Object -ComObject Shell.Application).Namespace(0x14)
+        
+        foreach ($font in $fontsToInstall) {
+            Write-Host "  [+] Installing font '$($font.Name)'..." -ForegroundColor Green
+            try {
+                $destination.CopyHere($font.FullName, 0x10)
+            } catch {
+                Write-Error "      -> Failed to install '$($font.Name)'. Reason: $_"
+            }
+        }
+        Write-Host "New font installation complete." -ForegroundColor Green
+    } else {
+        Write-Host "All required fonts are already installed." -ForegroundColor Green
+    }
+}
+catch {
+    Write-Error "An error occurred during font installation: $_"
+}
+finally {
+    if (Test-Path $tempDir) {
+        Write-Host "Cleaning up temporary files..." -ForegroundColor Yellow
+        Remove-Item -Path $tempDir -Recurse -Force
+        Write-Host "Cleanup complete." -ForegroundColor Green
+    }
+}
+
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "Script finished." -ForegroundColor Cyan
 Read-Host "Press any key to exit..."
